@@ -192,7 +192,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
         #          (or) 0 if S_t is a terminal state,
         # and
         #   N is the update horizon (by default, N=1).
-        return [self._replay.rewards + self._replay.rew_noise[i] + self.cumulative_gamma * replay_next_qt_max[i] * (
+        return [self._replay.rewards + tf.squeeze(self._replay.rew_noise[:, i]) + self.cumulative_gamma * replay_next_qt_max[i] * (
             1. - tf.cast(self._replay.terminals, tf.float32)) for i in range(self._num_ensemble)]
     
     def _build_train_op(self):
