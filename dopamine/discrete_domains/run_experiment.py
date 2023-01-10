@@ -25,6 +25,7 @@ import time
 from absl import logging
 
 from dopamine.agents.dqn import dqn_agent
+from dopamine.agents.ensemble_dqn import ensemble_dqn_agent
 from dopamine.agents.implicit_quantile import implicit_quantile_agent
 from dopamine.agents.rainbow import rainbow_agent
 from dopamine.discrete_domains import atari_lib
@@ -84,6 +85,9 @@ def create_agent(sess, environment, agent_name=None, summary_writer=None,
   if agent_name.startswith('dqn'):
     return dqn_agent.DQNAgent(sess, num_actions=environment.action_space.n,
                               summary_writer=summary_writer)
+  elif agent_name == 'ensemble_dqn':
+    return ensemble_dqn_agent.EnsembleDQNAgent(sess, num_actions=environment.action_space.n,
+                                               summary_writer=summary_writer)  
   elif agent_name == 'rainbow':
     return rainbow_agent.RainbowAgent(
         sess, num_actions=environment.action_space.n,
