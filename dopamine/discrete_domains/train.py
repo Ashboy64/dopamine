@@ -20,9 +20,6 @@ from absl import app
 from absl import flags
 from absl import logging
 
-import sys
-sys.path.insert(0, '~/dopamine')
-
 from dopamine.discrete_domains import run_experiment
 import tensorflow as tf
 
