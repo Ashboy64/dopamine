@@ -231,7 +231,7 @@ class NatureDQNHeadNetwork(tf.keras.Model):
       num_actions: int, number of actions.
       name: str, used to create scope for network parameters.
     """
-    super(NatureDQNNetwork, self).__init__(name=name)
+    super(NatureDQNHeadNetwork, self).__init__(name=name)
 
     self.num_actions = num_actions
     # Defining layers.
