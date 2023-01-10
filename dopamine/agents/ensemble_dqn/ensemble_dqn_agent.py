@@ -179,9 +179,6 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
         self._replay_next_prior_net_q_values = [self.prior_heads[i](
             replay_next_prior_representation).q_values for i in range(self._num_ensemble)]
 
-        # self._replay_net_outputs = self.online_heads[0](replay_representation)
-        # self._replay_next_target_net_outputs = self.target_heads[0](replay_next_target_representation)
-
     def _build_target_q_op(self):
         # Get the maximum Q-value across the actions dimension.
 
@@ -212,7 +209,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
         ensemble_losses = [tf.compat.v1.losses.huber_loss(
             target[i], replay_chosen_q[i], reduction=tf.losses.Reduction.NONE) for i in range(self._num_ensemble)]
         loss = tf.concat(
-            [ensemble_losses[i][None, :, :] for i in range(self._num_ensemble)], axis=0)
+            [ensemble_losses[i][None, :] for i in range(self._num_ensemble)], axis=0)
         # Axis 0 is the ensemble axis.
         loss = tf.reduce_mean(loss, axis=0)
 
