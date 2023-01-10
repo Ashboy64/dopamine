@@ -230,7 +230,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
             # technically this may be okay, setting all items to 0 priority will cause
             # troubles, and also result in 1.0 / 0.0 = NaN correction terms.
             if self._priority_type == 'loss':
-                priority = tf.sqrt(loss + 1e-10)
+                priorities = tf.sqrt(loss + 1e-10)
             
             # TODO(saurabh): Implement standard TD error based prioritization.
             elif self._priority_type == 'td_error':
@@ -242,7 +242,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
                 raise Exception('Not Implemented!')
 
             update_priorities_op = self._replay.tf_set_priority(
-                self._replay.indices, )
+                self._replay.indices, priorities)
 
             # Weight the loss by the inverse priorities.
             loss = loss_weights * loss
