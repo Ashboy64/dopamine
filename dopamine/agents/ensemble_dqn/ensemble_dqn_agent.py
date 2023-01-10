@@ -147,9 +147,12 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
 
     # Construct the Q-values used for selecting actions - average over ensemble outputs.
     representation = self.online_representation_net(self.state_ph).representation
+    prior_representation = self.prior_representation_net(self.state_ph).representation
+
     self._all_net_q_values = tf.concat(
-        [self.online_heads[i](representation).q_values for i in range(self._num_ensemble)], axis=0)
-    self._net_q_values = tf.reduce_mean(self._all_net_q_values, axis=0)
+        [self.online_heads[i](representation).q_values + self.prior_heads[i](prior_representation).q_values for i in range(
+            self._num_ensemble)], axis=0)
+    self._net_q_values = tf.reduce_mean(self._all_net_q_values, axis=0)[None, :]
     # TODO(bellemare): Ties should be broken. They are unlikely to happen when
     # using a deep network, but may affect performance with a linear
     # approximation scheme.
@@ -171,18 +174,16 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
     self._replay_next_target_net_q_values = [self.target_heads[i](
         replay_next_target_representation).q_values for i in range(self._num_ensemble)]
 
-    replay_next_prior_representation = self.target_representation_net(
+    replay_next_prior_representation = self.prior_representation_net(
         self._replay.next_states).representation
     self._replay_next_prior_net_q_values = [self.prior_heads[i](
         replay_next_prior_representation).q_values for i in range(self._num_ensemble)]
 
     def _build_target_q_op(self):
         # Get the maximum Q-value across the actions dimension.
-        replay_next_qt_max = [tf.reduce_max(
-            self._replay_next_target_net_q_values[i], 1) for i in range(self._num_ensemble)]
 
-        replay_next_qprior_max = [tf.reduce_max(
-            self._replay_next_prior_net_q_values[i], 1) for i in range(self._num_ensemble)] 
+        replay_next_qt_max = [tf.reduce_max(
+            self._replay_next_target_net_q_values[i] + self._replay_next_prior_net_q_values[i], 1) for i in range(self._num_ensemble)]
         
         # Calculate the Bellman target value.
         #   Q_t = R_t + \gamma^N * Q'_t+1
@@ -191,27 +192,27 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
         #          (or) 0 if S_t is a terminal state,
         # and
         #   N is the update horizon (by default, N=1).
-        return [self._replay.rewards + self._replay.rew_noise[i] + self.cumulative_gamma * (
-            replay_next_qt_max[i] + replay_next_qprior_max[i]) * (
-                1. - tf.cast(self._replay.terminals, tf.float32)) for i in range(self._num_ensemble)]
+        return [self._replay.rewards + self._replay.rew_noise[i] + self.cumulative_gamma * replay_next_qt_max[i] * (
+            1. - tf.cast(self._replay.terminals, tf.float32)) for i in range(self._num_ensemble)]
     
     def _build_train_op(self):
         replay_action_one_hot = tf.one_hot(
             self._replay.actions, self.num_actions, 1., 0., name='action_one_hot')
         replay_chosen_q = [tf.reduce_sum(
-            (self._replay_net_q_values[i] + self._replay_prior_net_q_values[i]) * replay_action_one_hot,
+            (self._replay_net_q_values[i] + tf.stop_gradient(self._replay_prior_net_q_values[i])) * replay_action_one_hot,
             axis=1,
             name='replay_chosen_q') for i in range(self._num_ensemble)]
 
-        
         target_qs = self._build_target_q_op()
         target = tf.stop_gradient([target_qs[i] for i in range(self._num_ensemble)])
 
         ensemble_losses = [tf.compat.v1.losses.huber_loss(
             target[i], replay_chosen_q[i], reduction=tf.losses.Reduction.NONE) for i in range(self._num_ensemble)]
         loss = tf.concat(
-            [ensemble_losses[i] for i in range(self._num_ensemble)], axis=0)
-        
+            [ensemble_losses[i][None, :, :] for i in range(self._num_ensemble)], axis=0)
+        # Axis 0 is the ensemble axis.
+        loss = tf.reduce_mean(loss, axis=0)
+
         if self._replay_scheme == 'prioritized':
             # The original prioritized experience replay uses a linear exponent
             # schedule 0.4 -> 1.0. Comparing the schedule to a fixed exponent of 0.5
