@@ -23,7 +23,7 @@ from __future__ import division
 from __future__ import print_function
 
 
-
+import collections
 from dopamine.replay_memory import circular_replay_buffer
 from dopamine.replay_memory import sum_tree
 from dopamine.replay_memory.circular_replay_buffer import ReplayElement
