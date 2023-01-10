@@ -179,6 +179,9 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
     self._replay_next_prior_net_q_values = [self.prior_heads[i](
         replay_next_prior_representation).q_values for i in range(self._num_ensemble)]
 
+    self._replay_net_outputs = self.online_heads[0](replay_representation)
+    self._replay_next_target_net_outputs = self.target_heads[0](replay_next_target_representation)
+
     def _build_target_q_op(self):
         # Get the maximum Q-value across the actions dimension.
 
