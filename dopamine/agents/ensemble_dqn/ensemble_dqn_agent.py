@@ -302,6 +302,20 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
 
         self.action = self._select_action()
         return self.action
+    
+    def end_episode(self, reward):
+        """Signals the end of the episode to the agent.
+
+        We store the observation of the current time step, which is the last
+        observation of the episode.
+
+        Args:
+        reward: float, the last reward from the environment.
+        """
+
+        if not self.eval_mode:
+            rew_noise = np.random.normal(loc=0, scale=self._rew_noise_scale, size=self._num_ensemble)
+            self._store_transition(self._observation, self.action, reward, True, rew_noise=rew_noise)
 
     def _store_transition(self,
                         last_observation,
