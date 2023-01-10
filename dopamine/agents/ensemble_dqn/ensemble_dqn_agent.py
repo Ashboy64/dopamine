@@ -19,168 +19,168 @@ import tensorflow as tf
 
 @gin.configurable
 class EnsembleDQNAgent(dqn_agent.DQNAgent):
-  """A compact implementation of a simplified Ensemble DQN agent."""
+    """A compact implementation of a simplified Ensemble DQN agent."""
 
-  def __init__(self,
-               sess,
-               num_actions,
-               observation_shape=dqn_agent.NATURE_DQN_OBSERVATION_SHAPE,
-               observation_dtype=dqn_agent.NATURE_DQN_DTYPE,
-               stack_size=dqn_agent.NATURE_DQN_STACK_SIZE,
-               representation_network=atari_lib.NatureDQNRepresentationNetwork,
-               head_network=atari_lib.NatureDQNHeadNetwork,
-               num_ensemble=1,
-               rew_noise_scale=0.0,
-               gamma=0.99,
-               update_horizon=1,
-               min_replay_history=20000,
-               update_period=4,
-               target_update_period=8000,
-               epsilon_fn=dqn_agent.linearly_decaying_epsilon,
-               epsilon_train=0.01,
-               epsilon_eval=0.001,
-               epsilon_decay_period=250000,
-               replay_scheme='prioritized',
-               priority_type='loss',
-               tf_device='/cpu:*',
-               use_staging=False,
-               optimizer=tf.compat.v1.train.AdamOptimizer(
-                   learning_rate=0.00025, epsilon=0.0003125),
-               summary_writer=None,
-               summary_writing_frequency=500):
-    
-    assert priority_type in ['loss', 'td_error', 'variance_reduction']
+    def __init__(self,
+                 sess,
+                 num_actions,
+                 observation_shape=dqn_agent.NATURE_DQN_OBSERVATION_SHAPE,
+                 observation_dtype=dqn_agent.NATURE_DQN_DTYPE,
+                 stack_size=dqn_agent.NATURE_DQN_STACK_SIZE,
+                 representation_network=atari_lib.NatureDQNRepresentationNetwork,
+                 head_network=atari_lib.NatureDQNHeadNetwork,
+                 num_ensemble=1,
+                 rew_noise_scale=0.0,
+                 gamma=0.99,
+                 update_horizon=1,
+                 min_replay_history=20000,
+                 update_period=4,
+                 target_update_period=8000,
+                 epsilon_fn=dqn_agent.linearly_decaying_epsilon,
+                 epsilon_train=0.01,
+                 epsilon_eval=0.001,
+                 epsilon_decay_period=250000,
+                 replay_scheme='prioritized',
+                 priority_type='loss',
+                 tf_device='/cpu:*',
+                 use_staging=False,
+                 optimizer=tf.compat.v1.train.AdamOptimizer(
+                     learning_rate=0.00025, epsilon=0.0003125),
+                 summary_writer=None,
+                 summary_writing_frequency=500):
 
-    self.representation_network = representation_network
-    self.head_network = head_network
+        assert priority_type in ['loss', 'td_error', 'variance_reduction']
 
-    self._replay_scheme = replay_scheme
-    self._priority_type = priority_type
-    self._num_ensemble = num_ensemble
-    self._rew_noise_scale = rew_noise_scale
-    # TODO(b/110897128): Make agent optimizer attribute private.
-    self.optimizer = optimizer
+        self.representation_network = representation_network
+        self.head_network = head_network
 
-    dqn_agent.DQNAgent.__init__(
-        self,
-        sess=sess,
-        num_actions=num_actions,
-        observation_shape=observation_shape,
-        observation_dtype=observation_dtype,
-        stack_size=stack_size,
-        gamma=gamma,
-        update_horizon=update_horizon,
-        min_replay_history=min_replay_history,
-        update_period=update_period,
-        target_update_period=target_update_period,
-        epsilon_fn=epsilon_fn,
-        epsilon_train=epsilon_train,
-        epsilon_eval=epsilon_eval,
-        epsilon_decay_period=epsilon_decay_period,
-        tf_device=tf_device,
-        use_staging=use_staging,
-        optimizer=self.optimizer,
-        summary_writer=summary_writer,
-        summary_writing_frequency=summary_writing_frequency)
+        self._replay_scheme = replay_scheme
+        self._priority_type = priority_type
+        self._num_ensemble = num_ensemble
+        self._rew_noise_scale = rew_noise_scale
+        # TODO(b/110897128): Make agent optimizer attribute private.
+        self.optimizer = optimizer
 
-  def _create_representation_net(self, name):
-    return self.representation_network(name=name)
+        dqn_agent.DQNAgent.__init__(
+            self,
+            sess=sess,
+            num_actions=num_actions,
+            observation_shape=observation_shape,
+            observation_dtype=observation_dtype,
+            stack_size=stack_size,
+            gamma=gamma,
+            update_horizon=update_horizon,
+            min_replay_history=min_replay_history,
+            update_period=update_period,
+            target_update_period=target_update_period,
+            epsilon_fn=epsilon_fn,
+            epsilon_train=epsilon_train,
+            epsilon_eval=epsilon_eval,
+            epsilon_decay_period=epsilon_decay_period,
+            tf_device=tf_device,
+            use_staging=use_staging,
+            optimizer=self.optimizer,
+            summary_writer=summary_writer,
+            summary_writing_frequency=summary_writing_frequency)
 
-  def _create_head(self, name):
-    return self.head_network(self.num_actions, name=name)
+    def _create_representation_net(self, name):
+        return self.representation_network(name=name)
 
-  def _build_replay_buffer(self, use_staging):
-    """Creates the replay buffer used by the agent.
+    def _create_head(self, name):
+        return self.head_network(self.num_actions, name=name)
 
-    Args:
-      use_staging: bool, if True, uses a staging area to prefetch data for
-        faster training.
+    def _build_replay_buffer(self, use_staging):
+        """Creates the replay buffer used by the agent.
 
-    Returns:
-      A `WrappedPrioritizedReplayBuffer` object.
+        Args:
+            use_staging: bool, if True, uses a staging area to prefetch data for
+            faster training.
 
-    Raises:
-      ValueError: if given an invalid replay scheme.
-    """
-    if self._replay_scheme not in ['uniform', 'prioritized']:
-      raise ValueError('Invalid replay scheme: {}'.format(self._replay_scheme))
-    # Both replay schemes use the same data structure, but the 'uniform' scheme
-    # sets all priorities to the same value (which yields uniform sampling).
+        Returns:
+            A `WrappedPrioritizedReplayBuffer` object.
 
-    extra_storage_types = [ReplayElement('reward_noise', (self._num_ensemble,), np.float32)]
+        Raises:
+            ValueError: if given an invalid replay scheme.
+        """
+        if self._replay_scheme not in ['uniform', 'prioritized']:
+            raise ValueError('Invalid replay scheme: {}'.format(self._replay_scheme))
+        # Both replay schemes use the same data structure, but the 'uniform' scheme
+        # sets all priorities to the same value (which yields uniform sampling).
 
-    return prioritized_replay_buffer.WrappedPrioritizedReplayBuffer(
-        observation_shape=self.observation_shape,
-        stack_size=self.stack_size,
-        use_staging=use_staging,
-        update_horizon=self.update_horizon,
-        gamma=self.gamma,
-        observation_dtype=self.observation_dtype.as_numpy_dtype,
-        extra_storage_types=extra_storage_types)
+        extra_storage_types = [ReplayElement('reward_noise', (self._num_ensemble,), np.float32)]
 
-  def _build_networks(self):
-    """Builds the Q-value network computations needed for acting and training.
+        return prioritized_replay_buffer.WrappedPrioritizedReplayBuffer(
+            observation_shape=self.observation_shape,
+            stack_size=self.stack_size,
+            use_staging=use_staging,
+            update_horizon=self.update_horizon,
+            gamma=self.gamma,
+            observation_dtype=self.observation_dtype.as_numpy_dtype,
+            extra_storage_types=extra_storage_types)
 
-    These are:
-      self.online_convnet: For computing the current state's Q-values.
-      self.target_convnet: For computing the next state's target Q-values.
-      self._net_outputs: The actual Q-values.
-      self._q_argmax: The action maximizing the current state's Q-values.
-      self._replay_net_outputs: The replayed states' Q-values.
-      self._replay_next_target_net_outputs: The replayed next states' target
-        Q-values (see Mnih et al., 2015 for details).
-    """
+    def _build_networks(self):
+        """Builds the Q-value network computations needed for acting and training.
 
-    # _network_template instantiates the model and returns the network object.
-    # The network object can be used to generate different outputs in the graph.
-    # At each call to the network, the parameters will be reused.
+        These are:
+            self.online_convnet: For computing the current state's Q-values.
+            self.target_convnet: For computing the next state's target Q-values.
+            self._net_outputs: The actual Q-values.
+            self._q_argmax: The action maximizing the current state's Q-values.
+            self._replay_net_outputs: The replayed states' Q-values.
+            self._replay_next_target_net_outputs: The replayed next states' target
+            Q-values (see Mnih et al., 2015 for details).
+        """
 
-    # Construct the online, target, and prior state representations.
-    self.online_representation_net = self._create_representation_net(name='Online_Rep')
-    self.target_representation_net = self._create_representation_net(name='Target_Rep')
-    self.prior_representation_net = self._create_representation_net(name='Prior_Rep')
+        # _network_template instantiates the model and returns the network object.
+        # The network object can be used to generate different outputs in the graph.
+        # At each call to the network, the parameters will be reused.
 
-    # Cosntruct the online, target, and prior heads.
-    self.online_heads = [self._create_head(name='Online_{}'.format(i)) for i in range(self._num_ensemble)]
-    self.target_heads = [self._create_head(name='Target_{}'.format(i)) for i in range(self._num_ensemble)]
-    self.prior_heads = [self._create_head(name='Prior_{}'.format(i)) for i in range(self._num_ensemble)]
+        # Construct the online, target, and prior state representations.
+        self.online_representation_net = self._create_representation_net(name='Online_Rep')
+        self.target_representation_net = self._create_representation_net(name='Target_Rep')
+        self.prior_representation_net = self._create_representation_net(name='Prior_Rep')
 
-    # Construct the Q-values used for selecting actions - average over ensemble outputs.
-    representation = self.online_representation_net(self.state_ph).representation
-    prior_representation = self.prior_representation_net(self.state_ph).representation
+        # Cosntruct the online, target, and prior heads.
+        self.online_heads = [self._create_head(name='Online_{}'.format(i)) for i in range(self._num_ensemble)]
+        self.target_heads = [self._create_head(name='Target_{}'.format(i)) for i in range(self._num_ensemble)]
+        self.prior_heads = [self._create_head(name='Prior_{}'.format(i)) for i in range(self._num_ensemble)]
 
-    self._all_net_q_values = tf.concat(
-        [self.online_heads[i](representation).q_values + self.prior_heads[i](prior_representation).q_values for i in range(
-            self._num_ensemble)], axis=0)
-    self._net_q_values = tf.reduce_mean(self._all_net_q_values, axis=0)[None, :]
-    # TODO(bellemare): Ties should be broken. They are unlikely to happen when
-    # using a deep network, but may affect performance with a linear
-    # approximation scheme.
-    self._q_argmax = tf.argmax(self._net_q_values, axis=1)[0]
+        # Construct the Q-values used for selecting actions - average over ensemble outputs.
+        representation = self.online_representation_net(self.state_ph).representation
+        prior_representation = self.prior_representation_net(self.state_ph).representation
 
-    # Construct the replay state and next state q-values for each ensemble member.
-    replay_representation = self.online_representation_net(
-        self._replay.states).representation
-    self._replay_net_q_values = [self.online_heads[i](
-        replay_representation).q_values for i in range(self._num_ensemble)]
-    
-    replay_prior_representation = self.prior_representation_net(
-        self._replay.states).representation
-    self._replay_prior_net_q_values = [self.prior_heads[i](
-        replay_prior_representation).q_values for i in range(self._num_ensemble)]
+        self._all_net_q_values = tf.concat(
+            [self.online_heads[i](representation).q_values + self.prior_heads[i](prior_representation).q_values for i in range(
+                self._num_ensemble)], axis=0)
+        self._net_q_values = tf.reduce_mean(self._all_net_q_values, axis=0)[None, :]
+        # TODO(bellemare): Ties should be broken. They are unlikely to happen when
+        # using a deep network, but may affect performance with a linear
+        # approximation scheme.
+        self._q_argmax = tf.argmax(self._net_q_values, axis=1)[0]
 
-    replay_next_target_representation = self.target_representation_net(
-        self._replay.next_states).representation
-    self._replay_next_target_net_q_values = [self.target_heads[i](
-        replay_next_target_representation).q_values for i in range(self._num_ensemble)]
+        # Construct the replay state and next state q-values for each ensemble member.
+        replay_representation = self.online_representation_net(
+            self._replay.states).representation
+        self._replay_net_q_values = [self.online_heads[i](
+            replay_representation).q_values for i in range(self._num_ensemble)]
 
-    replay_next_prior_representation = self.prior_representation_net(
-        self._replay.next_states).representation
-    self._replay_next_prior_net_q_values = [self.prior_heads[i](
-        replay_next_prior_representation).q_values for i in range(self._num_ensemble)]
+        replay_prior_representation = self.prior_representation_net(
+            self._replay.states).representation
+        self._replay_prior_net_q_values = [self.prior_heads[i](
+            replay_prior_representation).q_values for i in range(self._num_ensemble)]
 
-    self._replay_net_outputs = self.online_heads[0](replay_representation)
-    self._replay_next_target_net_outputs = self.target_heads[0](replay_next_target_representation)
+        replay_next_target_representation = self.target_representation_net(
+            self._replay.next_states).representation
+        self._replay_next_target_net_q_values = [self.target_heads[i](
+            replay_next_target_representation).q_values for i in range(self._num_ensemble)]
+
+        replay_next_prior_representation = self.prior_representation_net(
+            self._replay.next_states).representation
+        self._replay_next_prior_net_q_values = [self.prior_heads[i](
+            replay_next_prior_representation).q_values for i in range(self._num_ensemble)]
+
+        # self._replay_net_outputs = self.online_heads[0](replay_representation)
+        # self._replay_next_target_net_outputs = self.target_heads[0](replay_next_target_representation)
 
     def _build_target_q_op(self):
         # Get the maximum Q-value across the actions dimension.
