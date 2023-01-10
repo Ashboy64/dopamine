@@ -9,6 +9,7 @@ from __future__ import print_function
 
 from dopamine.agents.dqn import dqn_agent
 from dopamine.discrete_domains import atari_lib
+from dopamine.replay_memory.circular_replay_buffer import ReplayElement
 from dopamine.replay_memory import prioritized_replay_buffer
 import gin.tf
 import numpy as np
@@ -105,6 +106,9 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
       raise ValueError('Invalid replay scheme: {}'.format(self._replay_scheme))
     # Both replay schemes use the same data structure, but the 'uniform' scheme
     # sets all priorities to the same value (which yields uniform sampling).
+
+    extra_storage_types = [ReplayElement('reward_noise', (self._num_ensemble), self._reward_dtype)]
+
     return prioritized_replay_buffer.WrappedPrioritizedReplayBuffer(
         observation_shape=self.observation_shape,
         stack_size=self.stack_size,
@@ -112,7 +116,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
         update_horizon=self.update_horizon,
         gamma=self.gamma,
         observation_dtype=self.observation_dtype.as_numpy_dtype,
-        reward_noise_shape=(self._num_ensemble))
+        extra_storage_types=extra_storage_types)
 
   def _build_networks(self):
     """Builds the Q-value network computations needed for acting and training.
@@ -142,7 +146,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
     self.prior_heads = [self._create_head(name='Prior_{}'.format(i)) for i in range(self._num_ensemble)]
 
     # Construct the Q-values used for selecting actions - average over ensemble outputs.
-    representation = self.online_representation_net(self.state_ph)
+    representation = self.online_representation_net(self.state_ph).representation
     self._all_net_q_values = tf.concat(
         [self.online_heads[i](representation).q_values for i in range(self._num_ensemble)], axis=0)
     self._net_q_values = tf.reduce_mean(self._all_net_q_values, axis=0)
@@ -152,22 +156,26 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
     self._q_argmax = tf.argmax(self._net_q_values, axis=1)[0]
 
     # Construct the replay state and next state q-values for each ensemble member.
-    replay_representation = self.online_representation_net(self._replay.states)
+    replay_representation = self.online_representation_net(
+        self._replay.states).representation
     self._replay_net_q_values = [self.online_heads[i](
         replay_representation).q_values for i in range(self._num_ensemble)]
     
-    replay_prior_representation = self.prior_representation_net(self._replay.states)
+    replay_prior_representation = self.prior_representation_net(
+        self._replay.states).representation
     self._replay_prior_net_q_values = [self.prior_heads[i](
         replay_prior_representation).q_values for i in range(self._num_ensemble)]
 
-    replay_next_target_representation = self.target_representation_net(self._replay.next_states)
+    replay_next_target_representation = self.target_representation_net(
+        self._replay.next_states).representation
     self._replay_next_target_net_q_values = [self.target_heads[i](
         replay_next_target_representation).q_values for i in range(self._num_ensemble)]
 
-    replay_next_prior_representation = self.target_representation_net(self._replay.next_states)
+    replay_next_prior_representation = self.target_representation_net(
+        self._replay.next_states).representation
     self._replay_next_prior_net_q_values = [self.prior_heads[i](
         replay_next_prior_representation).q_values for i in range(self._num_ensemble)]
-    
+
     def _build_target_q_op(self):
         # Get the maximum Q-value across the actions dimension.
         replay_next_qt_max = [tf.reduce_max(
@@ -227,7 +235,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
             elif self._priority_type == 'td_error':
                 raise Exception('Not Implemented!')
 
-            # TODO(ashish): Implement variance reduction based prioritization.
+            # TODO(saurabh): Implement variance reduction based prioritization.
             # Specifically, compute the variance reduction expression using the optimal alpha.
             elif self._priority_type == 'variance_reduction':
                 raise Exception('Not Implemented!')
@@ -299,8 +307,8 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
                         action,
                         reward,
                         is_terminal,
-                        priority=None,
-                        rew_noise=None):
+                        rew_noise=None,
+                        priority=None):
         
         if priority is None:
             if self._replay_scheme == 'uniform':
@@ -309,5 +317,4 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
                 priority = self._replay.memory.sum_tree.max_recorded_priority
 
         if not self.eval_mode:
-            # TODO(saurabh): Update the prioritized replay buffer implementation to store reward noise!
-            self._replay.add(last_observation, action, reward, is_terminal, priority, rew_noise)
+            self._replay.add(last_observation, action, reward, is_terminal, rew_noise, priority)

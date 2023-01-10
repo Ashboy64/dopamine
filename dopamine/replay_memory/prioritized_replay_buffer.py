@@ -343,6 +343,30 @@ class WrappedPrioritizedReplayBuffer(
         reward_shape=reward_shape,
         reward_dtype=reward_dtype)
 
+  def unpack_transition(self, transition_tensors, transition_type):
+    """Unpacks the given transition into member variables.
+
+    Args:
+      transition_tensors: tuple of tf.Tensors.
+      transition_type: tuple of ReplayElements matching transition_tensors.
+    """
+    self.transition = collections.OrderedDict()
+    for element, element_type in zip(transition_tensors, transition_type):
+      self.transition[element_type.name] = element
+
+    # TODO(bellemare): These are legacy and should probably be removed in
+    # future versions.
+    self.states = self.transition['state']
+    self.actions = self.transition['action']
+    self.rewards = self.transition['reward']
+    self.next_states = self.transition['next_state']
+    self.next_actions = self.transition['next_action']
+    self.next_rewards = self.transition['next_reward']
+    self.terminals = self.transition['terminal']
+    self.indices = self.transition['indices']
+    # TODO(saurabh): This is only a temporary fix.
+    self.rew_noise = self.transition['reward_noise']
+
   def tf_set_priority(self, indices, priorities):
     """Sets the priorities for the given indices.
 

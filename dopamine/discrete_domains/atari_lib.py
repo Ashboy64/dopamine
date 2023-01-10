@@ -188,7 +188,7 @@ class NatureDQNNetwork(tf.keras.Model):
 class NatureDQNRepresentationNetwork(tf.keras.Model):
   """The convolutional network used to compute the agent's representation."""
 
-  def __init__(self, sname=None):
+  def __init__(self, name=None):
     """Creates the layers used for calculating the state representation.
 
     Args:
@@ -218,7 +218,7 @@ class NatureDQNRepresentationNetwork(tf.keras.Model):
     x = self.conv3(x)
     x = self.flatten(x)
 
-    return DQNRepresentationNetworkType(self.dense2(x))
+    return DQNRepresentationNetworkType(x)
 
 
 class NatureDQNHeadNetwork(tf.keras.Model):
@@ -242,7 +242,7 @@ class NatureDQNHeadNetwork(tf.keras.Model):
                                         name='fully_connected')
     self.dense2 = tf.keras.layers.Dense(num_actions, name='fully_connected')
 
-  def call(self, state):
+  def call(self, x):
     x = self.dense1(x)
 
     return DQNNetworkType(self.dense2(x))
