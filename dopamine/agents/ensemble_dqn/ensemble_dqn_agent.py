@@ -19,7 +19,7 @@ import tensorflow as tf
 
 @gin.configurable
 class EnsembleDQNAgent(dqn_agent.DQNAgent):
-  """A compact implementation of a simplified Rainbow agent."""
+  """A compact implementation of a simplified Ensemble DQN agent."""
 
   def __init__(self,
                sess,
@@ -107,7 +107,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
     # Both replay schemes use the same data structure, but the 'uniform' scheme
     # sets all priorities to the same value (which yields uniform sampling).
 
-    extra_storage_types = [ReplayElement('reward_noise', (self._num_ensemble), self._reward_dtype)]
+    extra_storage_types = [ReplayElement('reward_noise', (self._num_ensemble), np.float32)]
 
     return prioritized_replay_buffer.WrappedPrioritizedReplayBuffer(
         observation_shape=self.observation_shape,
