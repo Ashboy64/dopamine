@@ -58,6 +58,8 @@ NATURE_DQN_DTYPE = tf.uint8  # DType of Atari 2600 observations.
 NATURE_DQN_STACK_SIZE = 4  # Number of frames in the state stack.
 
 DQNNetworkType = collections.namedtuple('dqn_network', ['q_values'])
+DQNRepresentationNetworkType = collections.namedtuple('dqn_representation_network', ['representation'])
+
 RainbowNetworkType = collections.namedtuple(
     'c51_network', ['q_values', 'logits', 'probabilities'])
 ImplicitQuantileNetworkType = collections.namedtuple(
@@ -178,6 +180,69 @@ class NatureDQNNetwork(tf.keras.Model):
     x = self.conv2(x)
     x = self.conv3(x)
     x = self.flatten(x)
+    x = self.dense1(x)
+
+    return DQNNetworkType(self.dense2(x))
+  
+
+class NatureDQNRepresentationNetwork(tf.keras.Model):
+  """The convolutional network used to compute the agent's representation."""
+
+  def __init__(self, sname=None):
+    """Creates the layers used for calculating the state representation.
+
+    Args:
+      num_actions: int, number of actions.
+      name: str, used to create scope for network parameters.
+    """
+    super(NatureDQNRepresentationNetwork, self).__init__(name=name)
+
+
+    # Defining layers.
+    activation_fn = tf.keras.activations.relu
+    # Setting names of the layers manually to make variable names more similar
+    # with tf.slim variable names/checkpoints.
+    self.conv1 = tf.keras.layers.Conv2D(32, [8, 8], strides=4, padding='same',
+                                        activation=activation_fn, name='Conv')
+    self.conv2 = tf.keras.layers.Conv2D(64, [4, 4], strides=2, padding='same',
+                                        activation=activation_fn, name='Conv')
+    self.conv3 = tf.keras.layers.Conv2D(64, [3, 3], strides=1, padding='same',
+                                        activation=activation_fn, name='Conv')
+    self.flatten = tf.keras.layers.Flatten()
+
+  def call(self, state):
+    x = tf.cast(state, tf.float32)
+    x = x / 255
+    x = self.conv1(x)
+    x = self.conv2(x)
+    x = self.conv3(x)
+    x = self.flatten(x)
+
+    return DQNRepresentationNetworkType(self.dense2(x))
+
+
+class NatureDQNHeadNetwork(tf.keras.Model):
+  """The network used to compute the agent's Q-values."""
+
+  def __init__(self, num_actions, name=None):
+    """Creates the layers used for calculating Q-values.
+
+    Args:
+      num_actions: int, number of actions.
+      name: str, used to create scope for network parameters.
+    """
+    super(NatureDQNNetwork, self).__init__(name=name)
+
+    self.num_actions = num_actions
+    # Defining layers.
+    activation_fn = tf.keras.activations.relu
+    # Setting names of the layers manually to make variable names more similar
+    # with tf.slim variable names/checkpoints.
+    self.dense1 = tf.keras.layers.Dense(512, activation=activation_fn,
+                                        name='fully_connected')
+    self.dense2 = tf.keras.layers.Dense(num_actions, name='fully_connected')
+
+  def call(self, state):
     x = self.dense1(x)
 
     return DQNNetworkType(self.dense2(x))

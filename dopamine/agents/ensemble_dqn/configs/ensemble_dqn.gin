@@ -1,0 +1,41 @@
+ Hyperparameters follow the classic Nature DQN, but we modify as necessary to
+# match those used in Rainbow (Hessel et al., 2018), to ensure apples-to-apples
+# comparison.
+import dopamine.discrete_domains.atari_lib
+import dopamine.discrete_domains.run_experiment
+import dopamine.agents.dqn.dqn_agent
+import dopamine.replay_memory.circular_replay_buffer
+import gin.tf.external_configurables
+
+EnsembleDQNAgent.gamma = 0.99
+EnsembleDQNAgent.update_horizon = 1
+EnsembleDQNAgent.min_replay_history = 20000  # agent steps
+EnsembleDQNAgent.update_period = 4
+EnsembleDQNAgent.target_update_period = 8000  # agent steps
+EnsembleDQNAgent.epsilon_train = 0.01
+EnsembleDQNAgent.epsilon_eval = 0.001
+EnsembleDQNAgent.epsilon_decay_period = 250000  # agent steps
+EnsembleDQNAgent.tf_device = '/gpu:0'  # use '/cpu:*' for non-GPU version
+EnsembleDQNAgent.optimizer = @tf.train.AdamOptimizer()
+
+EnsembleDQNAgent.replay_scheme = 'prioritized'
+EnsembleDQNAgent.num_ensemble = 1
+EnsembleDQNAgent.rew_noise_scale = 0.0
+
+# Smoothness optimizer.
+tf.train.AdamOptimizer.learning_rate = 6.25e-5
+tf.train.AdamOptimizer.beta1 = 0.9
+tf.train.AdamOptimizer.beta2 = 0.999
+tf.train.AdamOptimizer.epsilon = 1.5e-4
+
+atari_lib.create_atari_environment.game_name = 'Pong'
+# Sticky actions with probability 0.25, as suggested by (Machado et al., 2017).
+atari_lib.create_atari_environment.sticky_actions = True
+create_agent.agent_name = 'ensemble_dqn'
+Runner.num_iterations = 200
+Runner.training_steps = 250000  # agent steps
+Runner.evaluation_steps = 1 # 125000  # agent steps
+Runner.max_steps_per_episode = 27000  # agent steps
+
+WrappedReplayBuffer.replay_capacity = 1000000
+WrappedReplayBuffer.batch_size = 32
