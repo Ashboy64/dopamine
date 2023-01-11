@@ -263,11 +263,8 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
             tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES,
             scope=os.path.join(scope, 'Online_Rep'))
         
-        # Compute the gradients with respect to the representation network
-        grads = tf.gradients(tf.reduce_mean(loss), trainables_online_rep)
-
-        # Compute the gradients for a list of variables.
-        grads_and_vars = self.optimizer.compute_gradients(loss, <list of variables>)
+        # Compute the gradients with respect to the representation network variables.
+        grads_and_vars = self.optimizer.compute_gradients(loss, trainables_online_rep)
 
         # grads_and_vars is a list of tuples (gradient, variable).  Divide gradents by ensemble size.
         normalized_grads_and_vars = [(gv[0] / float(self._num_ensemble), gv[1]) for gv in grads_and_vars]
