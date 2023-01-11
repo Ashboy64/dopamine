@@ -141,9 +141,9 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
         self.prior_representation_net = self._create_representation_net(name='Prior_Rep')
 
         # Cosntruct the online, target, and prior heads.
-        self.online_heads = [self._create_head(name='Online_{}'.format(i)) for i in range(self._num_ensemble)]
-        self.target_heads = [self._create_head(name='Target_{}'.format(i)) for i in range(self._num_ensemble)]
-        self.prior_heads = [self._create_head(name='Prior_{}'.format(i)) for i in range(self._num_ensemble)]
+        self.online_heads = [self._create_head(name='Online_Head_{}'.format(i)) for i in range(self._num_ensemble)]
+        self.target_heads = [self._create_head(name='Target_Head_{}'.format(i)) for i in range(self._num_ensemble)]
+        self.prior_heads = [self._create_head(name='Prior_Head_{}'.format(i)) for i in range(self._num_ensemble)]
 
         # Construct the Q-values used for selecting actions - average over ensemble outputs.
         representation = self.online_representation_net(self.state_ph).representation
@@ -278,7 +278,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
                 tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES,
                 scope=os.path.join(scope, 'Online_Head_{}'.format(i)))
             
-            # Compute the gradients with respect to the representation network variables.
+            # Compute the gradients with respect to the head network variables.
             grads_and_vars = self.optimizer.compute_gradients(loss, trainables_online_head)
 
             # Ask the optimizer to apply the normalized gradients.
