@@ -272,13 +272,17 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
         # Ask the optimizer to apply the normalized gradients.
         opt_ops.append(self.optimizer.apply_gradients(normalized_grads_and_vars))
 
-        # Ask the optimizer to minimize the loss as usual for each head.
+        # Do the same for each network head, but without scaling.
         for i in range(self._num_ensemble):
             trainables_online_head = tf.compat.v1.get_collection(
                 tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES,
                 scope=os.path.join(scope, 'Online_Head_{}'.format(i)))
             
-            opt_ops.append(self.optimizer.minimize(tf.reduce_mean(loss), var_list=trainables_online_head))
+            # Compute the gradients with respect to the representation network variables.
+            grads_and_vars = self.optimizer.compute_gradients(loss, trainables_online_head)
+
+            # Ask the optimizer to apply the normalized gradients.
+            opt_ops.append(self.optimizer.apply_gradients(grads_and_vars))
         
         return opt_ops
     
