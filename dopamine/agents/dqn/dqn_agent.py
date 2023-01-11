@@ -313,6 +313,7 @@ class DQNAgent(object):
     Returns:
       train_op: An op performing one step of training from replay data.
     """
+    
     replay_action_one_hot = tf.one_hot(
         self._replay.actions, self.num_actions, 1., 0., name='action_one_hot')
     replay_chosen_q = tf.reduce_sum(
@@ -463,6 +464,7 @@ class DQNAgent(object):
     """
     # Set current observation. We do the reshaping to handle environments
     # without frame stacking.
+
     self._observation = np.reshape(observation, self.observation_shape)
     # Swap out the oldest frame with the current frame.
     self.state = np.roll(self.state, -1, axis=-1)
@@ -555,6 +557,7 @@ class DQNAgent(object):
       return False
     else:
       logging.warning("Unable to reload the agent's parameters!")
+
     # Restore the agent's TensorFlow graph.
     self._saver.restore(self._sess,
                         os.path.join(checkpoint_dir,

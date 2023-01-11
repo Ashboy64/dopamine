@@ -25,10 +25,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import collections
 import itertools
 import math
-
-
 
 from dopamine.discrete_domains import atari_lib
 import gin
@@ -36,6 +35,8 @@ import gym
 from gym.wrappers.time_limit import TimeLimit
 import numpy as np
 import tensorflow as tf
+
+DQNRepresentationNetworkType = collections.namedtuple('dqn_representation_network', ['representation'])
 
 
 CARTPOLE_MIN_VALS = np.array([-2.4, -5., -math.pi/12., -math.pi*2.])
@@ -139,6 +140,15 @@ class BasicDiscreteDomainNetwork(tf.keras.layers.Layer):
     x = self.dense2(x)
     x = self.last_layer(x)
     return x
+
+
+@gin.configurable
+class IdentityNetwork(tf.keras.Model):
+  def __init__(self, name=None):
+    super().__init__(name=name)
+  
+  def call(self, state):
+    return DQNRepresentationNetworkType(state)
 
 
 @gin.configurable
