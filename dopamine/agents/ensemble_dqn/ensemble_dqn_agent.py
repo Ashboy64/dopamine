@@ -138,9 +138,9 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
     self.prior_representation_net = self._create_representation_net(name='Prior_Rep')
 
     # Cosntruct the online, target, and prior heads.
-    self.online_heads = [self._create_head(name='Online_{}'.format(i)) for i in range(self._num_ensemble)]
-    self.target_heads = [self._create_head(name='Target_{}'.format(i)) for i in range(self._num_ensemble)]
-    self.prior_heads = [self._create_head(name='Prior_{}'.format(i)) for i in range(self._num_ensemble)]
+    self.online_heads = [self._create_head(name='Online_Head_{}'.format(i)) for i in range(self._num_ensemble)]
+    self.target_heads = [self._create_head(name='Target_Head_{}'.format(i)) for i in range(self._num_ensemble)]
+    self.prior_heads = [self._create_head(name='Prior_Head_{}'.format(i)) for i in range(self._num_ensemble)]
 
     # Construct the Q-values used for selecting actions - average over ensemble outputs.
     representation = self.online_representation_net(self.state_ph).representation
@@ -206,10 +206,13 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
 
       ensemble_losses = [tf.compat.v1.losses.huber_loss(
           target[i], replay_chosen_q[i], reduction=tf.losses.Reduction.NONE) for i in range(self._num_ensemble)]
+      
       loss = tf.concat(
-          [ensemble_losses[i][None, :, :] for i in range(self._num_ensemble)], axis=0)
+          [tf.reshape(ensemble_losses[i], [1, -1]) for i in range(self._num_ensemble)], axis=0)
+      
       # Axis 0 is the ensemble axis.
-      loss = tf.reduce_mean(loss, axis=0)
+      loss_for_priority = tf.reduce_mean(loss, axis=0)
+      loss = tf.reduce_sum(loss, axis=0)
 
       if self._replay_scheme == 'prioritized':
           # The original prioritized experience replay uses a linear exponent
@@ -228,7 +231,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
           # technically this may be okay, setting all items to 0 priority will cause
           # troubles, and also result in 1.0 / 0.0 = NaN correction terms.
           if self._priority_type == 'loss':
-              priorities = tf.sqrt(loss + 1e-10)
+              priorities = tf.sqrt(loss_for_priority + 1e-10)
           
           # TODO(saurabh): Implement standard TD error based prioritization.
           elif self._priority_type == 'td_error':
@@ -279,7 +282,39 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
       if self.summary_writer is not None:
           with tf.compat.v1.variable_scope('Losses'):
               tf.compat.v1.summary.scalar('HuberLoss', tf.reduce_mean(loss))
-      return self.optimizer.minimize(tf.reduce_mean(loss))
+
+      # Optimization ops.
+      opt_ops = []
+
+      # Get the representation network vars.
+      scope = tf.compat.v1.get_default_graph().get_name_scope()
+      trainables_online_rep = tf.compat.v1.get_collection(
+          tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES,
+          scope=os.path.join(scope, 'Online_Rep'))
+      
+      if len(trainables_online_rep) > 0:
+        # Compute the gradients for a list of variables.
+        grads_and_vars = self.optimizer.compute_gradients(loss, trainables_online_rep)
+
+        # grads_and_vars is a list of tuples (gradient, variable).  Divide gradents by ensemble size.
+        normalized_grads_and_vars = [(gv[0] / float(self._num_ensemble), gv[1]) for gv in grads_and_vars]
+
+        # Ask the optimizer to apply the normalized gradients.
+        opt_ops.append(self.optimizer.apply_gradients(normalized_grads_and_vars))
+
+      # Do the same for each network head, but without scaling.
+      for i in range(self._num_ensemble):
+          trainables_online_head = tf.compat.v1.get_collection(
+              tf.compat.v1.GraphKeys.TRAINABLE_VARIABLES,
+              scope=os.path.join(scope, 'Online_Head_{}'.format(i)))
+
+          # Compute the gradients with respect to the head network variables.
+          grads_and_vars = self.optimizer.compute_gradients(loss, trainables_online_head)
+
+          # Ask the optimizer to apply the normalized gradients.
+          opt_ops.append(self.optimizer.apply_gradients(grads_and_vars))
+
+      return opt_ops
 
   def _build_sync_op(self):
       # First do the representation networks.
