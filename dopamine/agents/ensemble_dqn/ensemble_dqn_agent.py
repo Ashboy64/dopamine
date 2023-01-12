@@ -264,8 +264,10 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
               denominator = curr_variances + target_variances - 2 * covariances
 
               optimized_alpha = numerator / denominator
+              optimized_alpha *= 1 - tf.cast(tf.math.is_nan(optimized_alpha), tf.float32)
               optimized_alpha = tf.clip_by_value(optimized_alpha, 0, 1)
-              # Dropping these checks for now, just doing clipping
+              
+              # Below are old checks used. Should be equivalent to above.
               # optimized_alpha[denominator == 0] = 1.
               # optimized_alpha[numerator == 0] = 0.
               # optimized_alpha[optimized_alpha > 1] = 1.
