@@ -1,0 +1,14 @@
+EnsembleDQN:
+
+Directories:
+- Uniform: /Users/ashishrao/Coding/research/vanroylab/epistemic-per-project/dopamine-plotting/runs/uniform_ensemble_dqn
+- Loss Prioritized: /Users/ashishrao/Coding/research/vanroylab/epistemic-per-project/dopamine-plotting/runs/loss_prioritized_ensemble_dqn
+- TD Error Prioritized: /Users/ashishrao/Coding/research/vanroylab/epistemic-per-project/dopamine-plotting/runs/td_prioritized_ensemble_dqn
+- Epistemic Prioritized: /Users/ashishrao/Coding/research/vanroylab/epistemic-per-project/dopamine-plotting/runs/variance_reduction_prioritized_ensemble_dqn
+
+
+python -um dopamine.discrete_domains.train \
+  --base_dir /Users/ashishrao/Coding/research/vanroylab/epistemic-per-project/dopamine-plotting/runs/variance_reduction_prioritized_ensemble_dqn \
+  --gin_files dopamine/agents/ensemble_dqn/configs/ensemble_dqn_cartpole.gin
+
+(manually change .gin file each time for different runs)
