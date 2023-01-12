@@ -240,7 +240,39 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
             # TODO(saurabh): Implement variance reduction based prioritization.
             # Specifically, compute the variance reduction expression using the optimal alpha.
             elif self._priority_type == 'variance_reduction':
-                raise Exception('Not Implemented!')
+                concat_replay_chosen_q = tf.stack(replay_chosen_q)
+                concat_target = tf.concat(target, axis=0)
+
+                curr_variances = tf.math.reduce_variance(concat_replay_chosen_q, axis=0)
+                target_variances = tf.math.reduce_variance(concat_target, axis=0)
+
+                # Compute covariances
+                mean_chosen_q = tf.reduce_mean(concat_replay_chosen_q, axis=0, keepdims=True)
+                mean_target = tf.reduce_mean(concat_target, axis=0, keepdims=True)
+
+                shifted_chosen_q = concat_replay_chosen_q - mean_chosen_q
+                shifted_target = concat_target - mean_target
+
+                # -1 for bias correction
+                covariances = tf.reduce_sum(shifted_chosen_q * shifted_target, axis=0) / (self._num_ensemble - 1)
+                
+                # Find optimum alpha
+                numerator = curr_variances - covariances
+                denominator = curr_variances + target_variances - 2 * covariances
+
+                optimized_alpha = numerator / denominator
+                optimized_alpha *= 1 - tf.cast(tf.math.is_nan(optimized_alpha), tf.float32)
+                optimized_alpha = tf.clip_by_value(optimized_alpha, 0, 1)
+                
+                # Below are old checks used. Should be equivalent to above.
+                # optimized_alpha[denominator == 0] = 1.
+                # optimized_alpha[numerator == 0] = 0.
+                # optimized_alpha[optimized_alpha > 1] = 1.
+                # optimized_alpha[optimized_alpha < 0] = 0.
+
+                priorities = (1. - tf.square(1. - optimized_alpha)) * curr_variances - tf.square(
+                    optimized_alpha) * target_variances - 2. * optimized_alpha * (1. - optimized_alpha) * covariances
+                priorities = tf.math.maximum(tf.math.maximum(priorities, 1e-10 * tf.ones_like(priorities)), curr_variances - target_variances)
 
             update_priorities_op = self._replay.tf_set_priority(
                 self._replay.indices, priorities)

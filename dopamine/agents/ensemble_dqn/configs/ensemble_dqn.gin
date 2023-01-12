@@ -19,6 +19,7 @@ EnsembleDQNAgent.tf_device = '/gpu:0'  # use '/cpu:*' for non-GPU version
 EnsembleDQNAgent.optimizer = @tf.train.AdamOptimizer()
 
 EnsembleDQNAgent.replay_scheme = 'prioritized'
+EnsembleDQNAgent.priority_type = 'loss'
 EnsembleDQNAgent.num_ensemble = 1
 EnsembleDQNAgent.rew_noise_scale = 0.0
 
