@@ -31,6 +31,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
                head_network=atari_lib.NatureDQNHeadNetwork,
                num_ensemble=1,
                rew_noise_scale=0.0,
+               sample_ensemble_particles=False,
                gamma=0.99,
                update_horizon=1,
                min_replay_history=20000,
@@ -57,6 +58,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
     self._priority_type = priority_type
     self._num_ensemble = num_ensemble
     self._rew_noise_scale = rew_noise_scale
+    self._sample_ensemble_particles = sample_ensemble_particles
     # TODO(b/110897128): Make agent optimizer attribute private.
     self.optimizer = optimizer
 
@@ -204,12 +206,21 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
       target_qs = self._build_target_q_op()
       target = tf.stop_gradient([target_qs[i] for i in range(self._num_ensemble)])
 
-      ensemble_losses = [tf.compat.v1.losses.huber_loss(
-          target[i], replay_chosen_q[i], reduction=tf.losses.Reduction.NONE) for i in range(self._num_ensemble)]
-      
-      loss = tf.concat(
-          [tf.reshape(ensemble_losses[i], [1, -1]) for i in range(self._num_ensemble)], axis=0)
-      
+      concat_replay_chosen_q = tf.stack(replay_chosen_q)
+      concat_target = tf.concat(target, axis=0)
+
+      if self._sample_ensemble_particles:
+        ensemble_indices = tf.random.uniform(
+            shape=(self._num_ensemble,),
+            minval=0,
+            maxval=self._num_ensemble,
+            dtype=tf.dtypes.int32)
+        
+        concat_replay_chosen_q = tf.gather(concat_replay_chosen_q, ensemble_indices, axis=0)
+        concat_target = tf.gather(concat_target, ensemble_indices, axis=0)
+
+      loss = tf.compat.v1.losses.huber_loss(concat_target, concat_replay_chosen_q, reduction=tf.losses.Reduction.NONE)
+
       # Axis 0 is the ensemble axis.
       loss_for_priority = tf.reduce_mean(loss, axis=0)
       loss = tf.reduce_sum(loss, axis=0)
@@ -243,11 +254,8 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
           # TODO(saurabh): Implement variance reduction based prioritization.
           # Specifically, compute the variance reduction expression using the optimal alpha.
           elif self._priority_type == 'variance_reduction':
-              concat_replay_chosen_q = tf.stack(replay_chosen_q)
-              concat_target = tf.concat(target, axis=0)
-
-              curr_variances = tf.math.reduce_variance(concat_replay_chosen_q, axis=0)
-              target_variances = tf.math.reduce_variance(concat_target, axis=0)
+              target_variances = tf.math.reduce_variance(tf.concat(target, axis=0), axis=0)
+              curr_variances = tf.math.reduce_variance(tf.stack(replay_chosen_q), axis=0)
 
               # Compute covariances
               mean_chosen_q = tf.reduce_mean(concat_replay_chosen_q, axis=0, keepdims=True)
@@ -275,7 +283,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
 
               priorities = (1. - tf.square(1. - optimized_alpha)) * curr_variances - tf.square(
                   optimized_alpha) * target_variances - 2. * optimized_alpha * (1. - optimized_alpha) * covariances
-              priorities = tf.math.maximum(tf.math.maximum(priorities, tf.zeros_like(priorities)), curr_variances - target_variances)
+              priorities = tf.math.maximum(tf.math.maximum(priorities, 1e-10 * tf.ones_like(priorities)), curr_variances - target_variances)
 
           update_priorities_op = self._replay.tf_set_priority(
               self._replay.indices, priorities)
