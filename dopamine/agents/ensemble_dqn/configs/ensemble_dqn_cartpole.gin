@@ -22,7 +22,7 @@ EnsembleDQNAgent.epsilon_fn = @dqn_agent.identity_epsilon
 EnsembleDQNAgent.tf_device = '/gpu:0'  # use '/cpu:*' for non-GPU version
 EnsembleDQNAgent.optimizer = @tf.train.AdamOptimizer()
 
-EnsembleDQNAgent.replay_scheme = 'prioritized'
+EnsembleDQNAgent.replay_scheme = 'uniform'
 EnsembleDQNAgent.priority_type = 'variance_reduction'
 EnsembleDQNAgent.num_ensemble = 10
 EnsembleDQNAgent.rew_noise_scale = 0.0

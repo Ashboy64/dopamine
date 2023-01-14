@@ -7,8 +7,11 @@ Directories:
 - Epistemic Prioritized: /Users/ashishrao/Coding/research/vanroylab/epistemic-per-project/dopamine-plotting/runs/variance_reduction_prioritized_ensemble_dqn
 
 
+python -um dopamine.discrete_domains.train --gin_files='dopamine/agents/ensemble_dqn/configs/ensemble_dqn_cartpole.gin' --gin_bindings="EnsembleDQNAgent.replay_scheme = 'uniform'" --gin_bindings="EnsembleDQNAgent.priority_type = 'variance_reduction'" --gin_bindings="EnsembleDQNAgent.num_ensemble = 10" --gin_bindings="EnsembleDQNAgent.rew_noise_scale = 0" --gin_bindings="Runner.num_iterations = 2" --base_dir='/Users/ashishrao/Coding/research/vanroylab/epistemic-per-project/dopamine-plotting/runs/uniform_ensemble_dqn/run_1'
+
+
 python -um dopamine.discrete_domains.train \
-  --base_dir /Users/ashishrao/Coding/research/vanroylab/epistemic-per-project/dopamine-plotting/runs/variance_reduction_prioritized_ensemble_dqn \
+  --base_dir /Users/ashishrao/Coding/research/vanroylab/epistemic-per-project/dopamine-plotting/runs/uniform_ensemble_dqn/run_1 \
   --gin_files dopamine/agents/ensemble_dqn/configs/ensemble_dqn_cartpole.gin
 
 (manually change .gin file each time for different runs)
