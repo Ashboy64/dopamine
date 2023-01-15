@@ -27,6 +27,8 @@ EnsembleDQNAgent.replay_scheme = 'uniform'
 EnsembleDQNAgent.priority_type = 'variance_reduction'
 EnsembleDQNAgent.num_ensemble = 10
 EnsembleDQNAgent.rew_noise_scale = 0.0
+EnsembleDQNAgent.sample_ensemble_particles = False
+EnsembleDQNAgent.add_prior_values = False
 
 tf.train.AdamOptimizer.learning_rate = 0.001
 tf.train.AdamOptimizer.epsilon = 0.0003125

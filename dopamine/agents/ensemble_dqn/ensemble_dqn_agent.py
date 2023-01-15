@@ -32,6 +32,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
                num_ensemble=1,
                rew_noise_scale=0.0,
                sample_ensemble_particles=False,
+               add_prior_values=False,
                gamma=0.99,
                update_horizon=1,
                min_replay_history=20000,
@@ -59,6 +60,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
     self._num_ensemble = num_ensemble
     self._rew_noise_scale = rew_noise_scale
     self._sample_ensemble_particles = sample_ensemble_particles
+    self._add_prior_values = add_prior_values
     # TODO(b/110897128): Make agent optimizer attribute private.
     self.optimizer = optimizer
 
@@ -184,6 +186,10 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
 
       replay_next_qt_max = [tf.reduce_max(
           self._replay_next_target_net_q_values[i] + self._replay_next_prior_net_q_values[i], 1) for i in range(self._num_ensemble)]
+
+      if self._add_prior_values:
+          replay_next_qt_max = [replay_next_qt_max[i] + tf.stop_gradient(
+              (-100. + 10.*i) * tf.ones_like(replay_next_qt_max[i])) for i in range(self._num_ensemble)]
       
       # Calculate the Bellman target value.
       #   Q_t = R_t + \gamma^N * Q'_t+1
@@ -204,7 +210,11 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
           name='replay_chosen_q') for i in range(self._num_ensemble)]
 
       target_qs = self._build_target_q_op()
-      target = tf.stop_gradient([target_qs[i] for i in range(self._num_ensemble)])
+      target = [tf.stop_gradient(target_qs[i]) for i in range(self._num_ensemble)]
+
+      if self._add_prior_values:
+          replay_chosen_q = [replay_chosen_q[i] + tf.stop_gradient(
+              (-100. + 10.*i) * tf.ones_like(replay_chosen_q[i])) for i in range(self._num_ensemble)]
 
       concat_replay_chosen_q = tf.stack(replay_chosen_q)
       concat_target = tf.concat(target, axis=0)
