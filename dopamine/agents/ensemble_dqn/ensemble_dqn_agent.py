@@ -210,7 +210,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
           name='replay_chosen_q') for i in range(self._num_ensemble)]
 
       target_qs = self._build_target_q_op()
-      target = [tf.stop_gradient(target_qs[i]) for i in range(self._num_ensemble)]
+      target = tf.stop_gradient([target_qs[i] for i in range(self._num_ensemble)])
 
       if self._add_prior_values:
           replay_chosen_q = [replay_chosen_q[i] + tf.stop_gradient(
