@@ -189,7 +189,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
 
       if self._add_prior_values:
           replay_next_qt_max = [replay_next_qt_max[i] + tf.stop_gradient(
-              (-100. + 10.*i) * tf.ones_like(replay_next_qt_max[i])) for i in range(self._num_ensemble)]
+              (-100. + self._num_ensemble * i) * tf.ones_like(replay_next_qt_max[i])) for i in range(self._num_ensemble)]
       
       # Calculate the Bellman target value.
       #   Q_t = R_t + \gamma^N * Q'_t+1
@@ -214,7 +214,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
 
       if self._add_prior_values:
           replay_chosen_q = [replay_chosen_q[i] + tf.stop_gradient(
-              (-100. + 10.*i) * tf.ones_like(replay_chosen_q[i])) for i in range(self._num_ensemble)]
+              (-100. + self._num_ensemble * i) * tf.ones_like(replay_chosen_q[i])) for i in range(self._num_ensemble)]
 
       concat_replay_chosen_q = tf.stack(replay_chosen_q)
       concat_target = tf.concat(target, axis=0)
