@@ -33,6 +33,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
                rew_noise_scale=0.0,
                sample_ensemble_particles=False,
                add_prior_values=False,
+               reweight_loss=True,
                min_val=-100.,
                max_val=100.,
                gamma=0.99,
@@ -63,6 +64,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
     self._rew_noise_scale = rew_noise_scale
     self._sample_ensemble_particles = sample_ensemble_particles
     self._add_prior_values = add_prior_values
+    self._reweight_loss = reweight_loss
     self._min_val = min_val
     self._max_val = max_val
     # TODO(b/110897128): Make agent optimizer attribute private.
@@ -305,7 +307,8 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
               self._replay.indices, priorities)
 
           # Weight the loss by the inverse priorities.
-          loss = loss_weights * loss
+          if self._reweight_loss:
+            loss = loss_weights * loss
       else:
           update_priorities_op = tf.no_op()
 
