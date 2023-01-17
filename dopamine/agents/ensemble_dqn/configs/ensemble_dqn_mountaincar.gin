@@ -3,7 +3,7 @@
 import dopamine.discrete_domains.gym_lib
 import dopamine.discrete_domains.run_experiment
 import dopamine.agents.dqn.dqn_agent
-import dopamine.replay_memory.circular_replay_buffer
+import dopamine.replay_memory.prioritized_replay_buffer.py
 import gin.tf.external_configurables
 
 EnsembleDQNAgent.observation_shape = %gym_lib.MOUNTAINCAR_OBSERVATION_SHAPE
@@ -29,6 +29,8 @@ EnsembleDQNAgent.num_ensemble = 10
 EnsembleDQNAgent.rew_noise_scale = 0.0
 EnsembleDQNAgent.sample_ensemble_particles = False
 EnsembleDQNAgent.add_prior_values = False
+EnsembleDQNAgent.min_val = -100
+EnsembleDQNAgent.max_val = 0
 
 tf.train.AdamOptimizer.learning_rate = 0.001
 tf.train.AdamOptimizer.epsilon = 0.0003125
@@ -42,6 +44,6 @@ Runner.training_steps = 1000
 Runner.evaluation_steps = 1000
 Runner.max_steps_per_episode = 600  # Default max episode length.
 
-WrappedReplayBuffer.replay_capacity = 50000
-WrappedReplayBuffer.batch_size = 128
+WrappedPrioritizedReplayBuffer.replay_capacity = 50000
+WrappedPrioritizedReplayBuffer.batch_size = 128
 

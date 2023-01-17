@@ -4,7 +4,7 @@
 import dopamine.discrete_domains.atari_lib
 import dopamine.discrete_domains.run_experiment
 import dopamine.agents.ensemble_dqn.ensemble_dqn_agent
-import dopamine.replay_memory.circular_replay_buffer
+import dopamine.replay_memory.prioritized_replay_buffer.py
 import gin.tf.external_configurables
 
 EnsembleDQNAgent.gamma = 0.99
@@ -37,5 +37,5 @@ Runner.training_steps = 250000  # agent steps
 Runner.evaluation_steps = 1 # 125000  # agent steps
 Runner.max_steps_per_episode = 27000  # agent steps
 
-WrappedReplayBuffer.replay_capacity = 1000000
-WrappedReplayBuffer.batch_size = 32
+WrappedPrioritizedReplayBuffer.replay_capacity = 1000000
+WrappedPrioritizedReplayBuffer.batch_size = 32
