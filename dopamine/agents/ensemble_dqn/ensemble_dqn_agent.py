@@ -300,8 +300,8 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
               # optimized_alpha[optimized_alpha < 0] = 0.
 
               priorities = (1. - tf.square(1. - optimized_alpha)) * curr_variances - tf.square(
-                  optimized_alpha) * target_variances - 2. * optimized_alpha * (1. - optimized_alpha) * covariances
-              priorities = tf.math.maximum(tf.math.maximum(priorities, 0. * tf.ones_like(priorities)), curr_variances - target_variances)
+                  optimized_alpha) * target_variances - 2. * optimized_alpha * (1. - optimized_alpha) * covariances  
+              # priorities = tf.math.maximum(tf.math.maximum(priorities, 0. * tf.ones_like(priorities)), curr_variances - target_variances)
 
           update_priorities_op = self._replay.tf_set_priority(
               self._replay.indices, priorities)
