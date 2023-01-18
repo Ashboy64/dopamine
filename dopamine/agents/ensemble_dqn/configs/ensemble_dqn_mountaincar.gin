@@ -3,7 +3,7 @@
 import dopamine.discrete_domains.gym_lib
 import dopamine.discrete_domains.run_experiment
 import dopamine.agents.dqn.dqn_agent
-import dopamine.replay_memory.prioritized_replay_buffer.py
+import dopamine.replay_memory.prioritized_replay_buffer
 import gin.tf.external_configurables
 
 EnsembleDQNAgent.observation_shape = %gym_lib.MOUNTAINCAR_OBSERVATION_SHAPE
