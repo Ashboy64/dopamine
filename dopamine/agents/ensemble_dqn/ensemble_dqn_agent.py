@@ -32,6 +32,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
                num_ensemble=1,
                rew_noise_scale=0.0,
                sample_ensemble_particles=False,
+               add_prior_net=False,
                add_prior_values=False,
                reweight_loss=True,
                min_val=-100.,
@@ -63,6 +64,7 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
     self._num_ensemble = num_ensemble
     self._rew_noise_scale = rew_noise_scale
     self._sample_ensemble_particles = sample_ensemble_particles
+    self._add_prior_net = add_prior_net
     self._add_prior_values = add_prior_values
     self._reweight_loss = reweight_loss
     self._min_val = min_val
@@ -189,9 +191,12 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
 
   def _build_target_q_op(self):
       # Get the maximum Q-value across the actions dimension.
-
-      replay_next_qt_max = [tf.reduce_max(
-          self._replay_next_target_net_q_values[i] + self._replay_next_prior_net_q_values[i], 1) for i in range(self._num_ensemble)]
+      if self._add_prior_net:
+        replay_next_qt_max = [tf.reduce_max(
+            self._replay_next_target_net_q_values[i] + self._replay_next_prior_net_q_values[i], 1) for i in range(self._num_ensemble)]
+      else:
+        replay_next_qt_max = [tf.reduce_max(
+            self._replay_next_target_net_q_values[i], 1) for i in range(self._num_ensemble)]
 
       if self._add_prior_values:
           delta = ((self._max_val - self._min_val) / self._num_ensemble)
@@ -211,10 +216,17 @@ class EnsembleDQNAgent(dqn_agent.DQNAgent):
   def _build_train_op(self):
       replay_action_one_hot = tf.one_hot(
           self._replay.actions, self.num_actions, 1., 0., name='action_one_hot')
-      replay_chosen_q = [tf.reduce_sum(
-          (self._replay_net_q_values[i] + tf.stop_gradient(self._replay_prior_net_q_values[i])) * replay_action_one_hot,
-          axis=1,
-          name='replay_chosen_q') for i in range(self._num_ensemble)]
+    
+      if self._add_prior_net:
+        replay_chosen_q = [tf.reduce_sum(
+            (self._replay_net_q_values[i] + tf.stop_gradient(self._replay_prior_net_q_values[i])) * replay_action_one_hot,
+            axis=1,
+            name='replay_chosen_q') for i in range(self._num_ensemble)]
+      else:
+        replay_chosen_q = [tf.reduce_sum(
+            self._replay_net_q_values[i] * replay_action_one_hot,
+            axis=1,
+            name='replay_chosen_q') for i in range(self._num_ensemble)]
 
       target_qs = self._build_target_q_op()
       target = tf.stop_gradient([target_qs[i] for i in range(self._num_ensemble)])
